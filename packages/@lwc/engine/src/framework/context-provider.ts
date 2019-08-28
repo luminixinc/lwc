@@ -39,7 +39,6 @@ export function createContextProvider(adapter: WireAdapterConstructor) {
         if (ArrayIndexOf.call(providers, elm) !== 0) {
             throw new Error(`Adapter was already installed on ${elm}.`);
         }
-        // TODO: what if the same contextualizer is installed twice on the same elm?
         const { consumerConnectedCallback, consumerDisconnectedCallback } = options;
         elm.addEventListener(adapterContextToken as string, (evt: WireContextEvent) => {
             const { detail } = evt;
