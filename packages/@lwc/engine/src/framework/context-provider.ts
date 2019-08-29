@@ -36,7 +36,7 @@ export function createContextProvider(adapter: WireAdapterConstructor) {
     setAdapterToken(adapter, adapterContextToken);
     const providers = [];
     return (elm: EventTarget, options: ContextProviderOptions) => {
-        if (ArrayIndexOf.call(providers, elm) !== 0) {
+        if (ArrayIndexOf.call(providers, elm) !== -1) {
             throw new Error(`Adapter was already installed on ${elm}.`);
         }
         const { consumerConnectedCallback, consumerDisconnectedCallback } = options;

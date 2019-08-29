@@ -22,11 +22,14 @@ export class WireAdapter {
         this._dataCallback(this.contextValue);
     }
     update(_config, context) {
-        if (!context || context.hasOwnProperty('value')) {
-            throw new Error(`Invalid context provided`);
+        if (context) {
+            // we only care about the context, no config is expected or used
+            if (!context.hasOwnProperty('value')) {
+                throw new Error(`Invalid context provided`);
+            }
+            this.contextValue = context.value;
+            this._dataCallback(this.contextValue);
         }
-        this.contextValue = context.value;
-        this._dataCallback(this.contextValue);
     }
     connect() {
         // noop

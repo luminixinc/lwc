@@ -21,7 +21,7 @@ function storeDef(Ctor: ComponentConstructor, key: string, def: WireDef) {
     WireMetaMap.set(Ctor, record);
 }
 
-function createFieldDataCallback(vm: VM) {
+function createFieldDataCallback(vm: VM, name: string) {
     const { component, cmpFields } = vm;
     return (value: any) => {
         // storing the value in the underlying storage
@@ -105,10 +105,10 @@ function createContextWatcher(
     });
 }
 
-function createConnector(vm: VM, wireDef: WireDef): WireAdapter {
+function createConnector(vm: VM, name: string, wireDef: WireDef): WireAdapter {
     const { method, adapter } = wireDef;
     const dataCallback = isUndefined(method)
-        ? createFieldDataCallback(vm)
+        ? createFieldDataCallback(vm, name)
         : createMethodDataCallback(vm, method);
     let context: ContextValue | undefined;
     let connector: WireAdapter;
@@ -249,16 +249,14 @@ export function installWireAdapters(vm: VM) {
             );
         }
     } else {
-        const connect = [];
-        const disconnect = [];
+        const connect = (vm.context.wiredConnecting = []);
+        const disconnect = (vm.context.wiredDisconnecting = []);
         for (const name in meta) {
             const wireDef = meta[name];
-            const connector = createConnector(vm, wireDef);
+            const connector = createConnector(vm, name, wireDef);
             ArrayPush.call(connect, () => connector.connect());
             ArrayPush.call(disconnect, () => connector.disconnect());
         }
-        vm.context.wiredConnecting = connect;
-        vm.context.wiredDisconnecting = disconnect;
     }
 }
 

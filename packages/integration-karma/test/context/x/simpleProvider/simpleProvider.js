@@ -29,14 +29,18 @@ export class WireAdapter {
     contextValue = getDefaultContext();
     constructor(dataCallback) {
         this._dataCallback = dataCallback;
+        // provides the default wired value based on the default context value
         this._dataCallback(createContextPayload(this.contextValue));
     }
     update(_config, context) {
-        if (!context || context.hasOwnProperty('value')) {
-            throw new Error(`Invalid context provided`);
+        if (context) {
+            // we only care about the context, no config is expected or used
+            if (!context.hasOwnProperty('value')) {
+                throw new Error(`Invalid context provided`);
+            }
+            this.contextValue = context.value;
+            this._dataCallback(createContextPayload(this.contextValue));
         }
-        this.contextValue = context.value;
-        this._dataCallback(createContextPayload(this.contextValue));
     }
     connect() {
         // noop
