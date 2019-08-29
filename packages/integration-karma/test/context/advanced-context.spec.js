@@ -1,6 +1,4 @@
 import { createElement } from 'lwc';
-// import { registerWireService } from 'wire-service';
-// registerWireService(register);
 import { installCustomContext, getValueForIdentity } from 'x/advancedProvider';
 import Consumer from 'x/advancedConsumer';
 import { setValueForIdentity } from './x/advancedProvider/advancedProvider';
