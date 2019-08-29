@@ -11,7 +11,6 @@ import { StringToLowerCase, isUndefined } from '../shared/language';
 
 type MeasurementPhase =
     | 'constructor'
-    | 'wire'
     | 'render'
     | 'patch'
     | 'connectedCallback'

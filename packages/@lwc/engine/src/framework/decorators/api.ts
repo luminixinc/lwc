@@ -17,13 +17,12 @@ import { isFunction } from '../../shared/language';
  * LWC Components. This function implements the internals of this
  * decorator.
  */
-// TODO: how to make api a decoratorFunction type as well?
+export default function api(target: any, propertyKey: string, descriptor: PropertyDescriptor);
 export default function api() {
     if (process.env.NODE_ENV !== 'production') {
-        if (arguments.length !== 0) {
-            assert.fail(`@api decorator can only be used as a decorator function.`);
-        }
+        assert.fail(`@api decorator can only be used as a decorator function.`);
     }
+    throw new Error();
 }
 
 export function createPublicPropertyDescriptor(key: string): PropertyDescriptor {
@@ -78,7 +77,13 @@ export function createPublicAccessorDescriptor(
 ): PropertyDescriptor {
     const { get, set, enumerable, configurable } = descriptor;
     if (!isFunction(get)) {
-        throw new TypeError();
+        if (process.env.NODE_ENV !== 'production') {
+            assert.invariant(
+                isFunction(get),
+                `Invalid compiler output for public accessor ${toString(key)} decorated with @api`
+            );
+        }
+        throw new Error();
     }
     return {
         get(this: ComponentInterface): any {

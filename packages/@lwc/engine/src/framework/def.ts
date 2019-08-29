@@ -16,20 +16,21 @@
 import assert from '../shared/assert';
 import {
     freeze,
-    getOwnPropertyNames,
     getPrototypeOf,
     isNull,
     setPrototypeOf,
     isUndefined,
     isFunction,
-    ArrayConcat,
     defineProperties,
+    keys,
+    create,
+    assign,
 } from '../shared/language';
-import { createObservedFieldsDescriptorMap } from './observed-fields';
 import {
     resolveCircularModuleDependency,
     isCircularModuleDependency,
     ViewModelReflection,
+    EmptyObject,
 } from './utils';
 import {
     ComponentConstructor,
@@ -41,8 +42,9 @@ import { Template } from './template';
 
 export interface ComponentDef {
     name: string;
-    props: string[];
-    wire: string[];
+    wire: PropertyDescriptorMap | undefined;
+    props: PropertyDescriptorMap;
+    methods: PropertyDescriptorMap;
     template: Template;
     ctor: ComponentConstructor;
     bridge: HTMLElementConstructor;
@@ -100,7 +102,7 @@ function createComponentDef(
     const { name } = meta;
     let { template } = meta;
     const decoratorsMeta = getDecoratorsMeta(Ctor);
-    const { apiFields, apiMethods, wiredFields, wiredMethods, fields } = decoratorsMeta;
+    const { apiFields, apiMethods, wiredFields, wiredMethods, observedFields } = decoratorsMeta;
     const proto = Ctor.prototype;
 
     let {
@@ -113,12 +115,18 @@ function createComponentDef(
     const superProto = getCtorProto(Ctor, subclassComponentName);
     const superDef: ComponentDef | null =
         (superProto as any) !== BaseLightningElement
-            ? getComponentDef(superProto, subclassComponentName)
+            ? getComponentInternalDef(superProto, subclassComponentName)
             : lightingElementDef;
     const SuperBridge = isNull(superDef) ? BaseBridgeElement : superDef.bridge;
-    const bridge = HTMLBridgeElementFactory(SuperBridge, apiFields, apiMethods);
-    const props = ArrayConcat.call(superDef.props, apiFields);
-    const wire = ArrayConcat.call(superDef.wire, wiredFields, wiredMethods);
+    const bridge = HTMLBridgeElementFactory(SuperBridge, keys(apiFields), keys(apiMethods));
+    const props: PropertyDescriptorMap = assign(create(null), superDef.props, apiFields);
+    const methods: PropertyDescriptorMap = assign(create(null), superDef.methods, apiMethods);
+    const wire: PropertyDescriptorMap = assign(
+        create(null),
+        superDef.wire,
+        wiredFields,
+        wiredMethods
+    );
     connectedCallback = connectedCallback || superDef.connectedCallback;
     disconnectedCallback = disconnectedCallback || superDef.disconnectedCallback;
     renderedCallback = renderedCallback || superDef.renderedCallback;
@@ -126,15 +134,17 @@ function createComponentDef(
     render = render || superDef.render;
     template = template || superDef.template;
 
-    if (!isUndefined(fields)) {
-        defineProperties(proto, createObservedFieldsDescriptorMap(fields));
-    }
+    // installing observed fields into the prototype
+    // TODO: consider move this to instance level fields to match the original
+    // semantics of the public fields.
+    defineProperties(proto, observedFields);
 
     const def: ComponentDef = {
         ctor: Ctor,
         name,
         wire,
         props,
+        methods,
         bridge,
         template,
         connectedCallback,
@@ -190,11 +200,7 @@ export function isComponentConstructor(ctor: any): ctor is ComponentConstructor 
     return false;
 }
 
-/**
- * EXPERIMENTAL: This function allows for the collection of internal
- * component metadata. This API is subject to change or being removed.
- */
-export function getComponentDef(Ctor: any, subclassComponentName?: string): ComponentDef {
+export function getComponentInternalDef(Ctor: any, subclassComponentName?: string): ComponentDef {
     let def = CtorToDefMap.get(Ctor);
 
     if (isUndefined(def)) {
@@ -241,8 +247,7 @@ export function setElementProto(elm: HTMLElement, def: ComponentDef) {
     setPrototypeOf(elm, def.bridge.prototype);
 }
 
-import { HTMLElementOriginalDescriptors } from './html-properties';
-import { BaseLightningElement } from './base-lightning-element';
+import { BaseLightningElement, lightningBasedDescriptors } from './base-lightning-element';
 import {
     BaseBridgeElement,
     HTMLBridgeElementFactory,
@@ -251,13 +256,62 @@ import {
 import { getDecoratorsMeta } from './decorators/register';
 import { defaultEmptyTemplate } from './secure-template';
 import { getHiddenField } from '../shared/fields';
+import { getAttrNameFromPropName } from './attributes';
 
 const lightingElementDef: ComponentDef = {
     ctor: BaseLightningElement,
     name: BaseLightningElement.name,
-    props: getOwnPropertyNames(HTMLElementOriginalDescriptors),
-    wire: [],
+    props: lightningBasedDescriptors,
+    methods: EmptyObject,
+    wire: EmptyObject,
     bridge: BaseBridgeElement,
     template: defaultEmptyTemplate,
     render: BaseLightningElement.prototype.render,
 };
+
+// TODO: remove experimental public API getComponentDef
+interface PropDef {
+    config: number;
+    type: string;
+    attr: string;
+}
+type PublicMethod = (...args: any[]) => any;
+interface PublicComponentDef {
+    name: string;
+    props: Record<string, PropDef>;
+    methods: Record<string, PublicMethod>;
+    ctor: ComponentConstructor;
+}
+
+/**
+ * EXPERIMENTAL: This function allows for the collection of internal
+ * component metadata. This API is subject to change or being removed.
+ */
+export function getComponentDef(Ctor: any, subclassComponentName?: string): PublicComponentDef {
+    const def = getComponentInternalDef(Ctor, subclassComponentName);
+    // From the internal def object, we need to extract the info that is useful
+    // for some external services, e.g.: Locker Service, usually, all they care
+    // is about the shape of the constructor, the internals of it are not relevant
+    // because they don't have a way to mess with that.
+    const { ctor, name, props, methods } = def;
+    const publicProps: Record<string, PropDef> = {};
+    for (const key in props) {
+        // avoid leaking the reference to the public props descriptors
+        publicProps[key] = {
+            config: 0, // always a property
+            type: 'any', // no type inference for public services
+            attr: getAttrNameFromPropName(key),
+        };
+    }
+    const publicMethods: Record<string, PublicMethod> = {};
+    for (const key in methods) {
+        // avoid leaking the reference to the public method descriptors
+        publicMethods[key] = methods[key].value as (...args: any[]) => any;
+    }
+    return {
+        ctor,
+        name,
+        props: publicProps,
+        methods: publicMethods,
+    };
+}

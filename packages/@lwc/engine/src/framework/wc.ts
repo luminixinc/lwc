@@ -5,10 +5,10 @@
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/MIT
  */
 import { ComponentConstructor } from './component';
-import { isUndefined, isObject, isNull, ArrayReduce, keys } from '../shared/language';
+import { isUndefined, isObject, isNull, keys } from '../shared/language';
 import { createVM, appendRootVM, removeRootVM, getCustomElementVM, CreateVMInit } from './vm';
 import { EmptyObject } from './utils';
-import { getComponentDef } from './def';
+import { getComponentInternalDef } from './def';
 import { isAttributeLocked, getAttrNameFromPropName } from './attributes';
 import { HTMLElementConstructor } from './base-bridge-element';
 import { patchCustomElementWithRestrictions } from './restrictions';
@@ -29,17 +29,13 @@ export function buildCustomElementConstructor(
     Ctor: ComponentConstructor,
     options?: ShadowRootInit
 ): HTMLElementConstructor {
-    const { props, bridge: BaseElement } = getComponentDef(Ctor);
+    const { props, bridge: BaseElement } = getComponentInternalDef(Ctor);
     // generating the hash table for attributes to avoid duplicate fields
     // and facilitate validation and false positives in case of inheritance.
-    const attributeToPropMap = ArrayReduce.call(
-        props,
-        (reducer: Record<string, string>, propName: string) => {
-            reducer[getAttrNameFromPropName(propName)] = propName;
-            return reducer;
-        },
-        {}
-    ) as Record<string, string>;
+    const attributeToPropMap: Record<string, string> = {};
+    for (const propName in props) {
+        attributeToPropMap[getAttrNameFromPropName(propName)] = propName;
+    }
     const normalizedOptions: CreateVMInit = {
         mode: 'open',
         isRoot: true,

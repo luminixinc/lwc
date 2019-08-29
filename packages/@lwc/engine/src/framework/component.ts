@@ -19,7 +19,6 @@ import { tagNameGetter } from '../env/element';
 import { Template } from './template';
 import { ReactiveObserver } from '../libs/mutation-tracker';
 import { LightningElementConstructor, LightningElement } from './base-lightning-element';
-import { installWireAdapters } from './wiring';
 
 export type ErrorCallback = (error: any, stack: string) => void;
 export interface ComponentInterface extends LightningElement {
@@ -74,16 +73,6 @@ export function createComponent(uninitializedVm: UninitializedVM, Ctor: Componen
         throw new ReferenceError(
             `Invalid construction for ${Ctor}, you must extend LightningElement.`
         );
-    }
-}
-
-export function linkComponent(vm: VM) {
-    if (process.env.NODE_ENV !== 'production') {
-        assert.isTrue(vm && 'cmpRoot' in vm, `${vm} is not a vm.`);
-    }
-    // initializing the wire decorator per instance only when really needed
-    if (vm.def.wire.length > 0) {
-        installWireAdapters(vm);
     }
 }
 

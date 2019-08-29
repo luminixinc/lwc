@@ -17,12 +17,10 @@ import assert from '../shared/assert';
 import {
     freeze,
     create,
-    getOwnPropertyNames,
     isFunction,
     isNull,
     defineProperties,
     seal,
-    ArrayReduce,
     isObject,
     isFalse,
 } from '../shared/language';
@@ -143,7 +141,7 @@ export interface LightningElementConstructor {
 
 export declare var LightningElement: LightningElementConstructor;
 
-export interface LightningElement extends EventTarget {
+export interface LightningElement {
     // DOM - The good parts
     dispatchEvent(event: Event): boolean;
     addEventListener(
@@ -561,22 +559,15 @@ BaseLightningElementConstructor.prototype = {
     },
 };
 
-// Typescript is inferring the wrong function type for this particular
-// overloaded method: https://github.com/Microsoft/TypeScript/issues/27972
-// @ts-ignore type-mismatch
-const baseDescriptors: PropertyDescriptorMap = ArrayReduce.call(
-    getOwnPropertyNames(HTMLElementOriginalDescriptors),
-    (descriptors: PropertyDescriptorMap, propName: string) => {
-        descriptors[propName] = createBridgeToElementDescriptor(
-            propName,
-            HTMLElementOriginalDescriptors[propName]
-        );
-        return descriptors;
-    },
-    create(null)
-);
+export const lightningBasedDescriptors: PropertyDescriptorMap = create(null);
+for (const propName in HTMLElementOriginalDescriptors) {
+    lightningBasedDescriptors[propName] = createBridgeToElementDescriptor(
+        propName,
+        HTMLElementOriginalDescriptors[propName]
+    );
+}
 
-defineProperties(BaseLightningElementConstructor.prototype, baseDescriptors);
+defineProperties(BaseLightningElementConstructor.prototype, lightningBasedDescriptors);
 
 if (process.env.NODE_ENV !== 'production') {
     patchLightningElementPrototypeWithRestrictions(BaseLightningElementConstructor.prototype);

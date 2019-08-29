@@ -32,7 +32,7 @@ import {
     unlockDomMutation,
     lockDomMutation,
 } from './restrictions';
-import { getComponentDef, setElementProto } from './def';
+import { getComponentInternalDef, setElementProto } from './def';
 import { getHiddenField } from '../shared/fields';
 
 const noop = () => void 0;
@@ -182,7 +182,7 @@ export function createViewModelHook(vnode: VCustomElement) {
         return;
     }
     const { mode, ctor, owner } = vnode;
-    const def = getComponentDef(ctor);
+    const def = getComponentInternalDef(ctor);
     setElementProto(elm, def);
     if (isTrue(useSyntheticShadow)) {
         const { shadowAttribute } = owner.context;

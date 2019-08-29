@@ -5,21 +5,15 @@
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/MIT
  */
 import assert from '../shared/assert';
-import { isUndefined, create, ArrayPush } from '../shared/language';
-import { ComponentConstructor, ComponentInterface } from './component';
+import { isUndefined, ArrayPush, getOwnPropertyNames } from '../shared/language';
+import { ComponentInterface } from './component';
 import { valueMutated, ReactiveObserver } from '../libs/mutation-tracker';
 import { VM, runWithBoundaryProtection } from './vm';
 import { invokeComponentCallback } from './invoker';
 import { dispatchEvent } from '../env/dom';
 
-const WireMetaMap: Map<ComponentConstructor, WireHash> = new Map();
+const WireMetaMap: Map<PropertyDescriptor, WireDef> = new Map();
 function noop(): void {}
-
-function storeDef(Ctor: ComponentConstructor, key: string, def: WireDef) {
-    const record: Record<string, WireDef> = WireMetaMap.get(Ctor) || create(null);
-    record[key] = def;
-    WireMetaMap.set(Ctor, record);
-}
 
 function createFieldDataCallback(vm: VM, name: string) {
     const { component, cmpFields } = vm;
@@ -167,8 +161,6 @@ interface WireAdapter {
 
 type WireAdapterSchemaValue = 'optional' | 'required';
 
-type WireHash = Record<string, WireDef>;
-
 interface WireDef {
     method?: (data: any) => void;
     adapter: WireAdapterConstructor;
@@ -202,27 +194,25 @@ export interface WireAdapterConstructor {
 }
 
 export function storeWiredMethodMeta(
-    Ctor: ComponentConstructor,
-    methodName: string,
+    descriptor: PropertyDescriptor,
     adapter: WireAdapterConstructor,
-    method: (data: any) => void,
     configCallback: ConfigCallback
 ) {
     // support for callable adapters
     if ((adapter as any).adapter) {
         adapter = (adapter as any).adapter;
     }
+    const method = descriptor.value;
     const def: WireMethodDef = {
         adapter,
         method,
         configCallback,
     };
-    storeDef(Ctor, methodName, def);
+    WireMetaMap.set(descriptor, def);
 }
 
 export function storeWiredFieldMeta(
-    Ctor: ComponentConstructor,
-    fieldName: string,
+    descriptor: PropertyDescriptor,
     adapter: WireAdapterConstructor,
     configCallback: ConfigCallback
 ) {
@@ -234,15 +224,14 @@ export function storeWiredFieldMeta(
         adapter,
         configCallback,
     };
-    storeDef(Ctor, fieldName, def);
+    WireMetaMap.set(descriptor, def);
 }
 
 export function installWireAdapters(vm: VM) {
     const {
-        def: { ctor },
+        def: { wire },
     } = vm;
-    const meta = WireMetaMap.get(ctor);
-    if (isUndefined(meta)) {
+    if (getOwnPropertyNames(wire).length === 0) {
         if (process.env.NODE_ENV !== 'production') {
             assert.fail(
                 `Internal Error: wire adapters should only be installed in instances with at least one wire declaration.`
@@ -251,11 +240,17 @@ export function installWireAdapters(vm: VM) {
     } else {
         const connect = (vm.context.wiredConnecting = []);
         const disconnect = (vm.context.wiredDisconnecting = []);
-        for (const name in meta) {
-            const wireDef = meta[name];
-            const connector = createConnector(vm, name, wireDef);
-            ArrayPush.call(connect, () => connector.connect());
-            ArrayPush.call(disconnect, () => connector.disconnect());
+        for (const fieldNameOrMethod in wire) {
+            const descriptor = wire[fieldNameOrMethod];
+            const wireDef = WireMetaMap.get(descriptor);
+            if (process.env.NODE_ENV !== 'production') {
+                assert.invariant(wireDef, `Internal Error: invalid wire definition found.`);
+            }
+            if (!isUndefined(wireDef)) {
+                const adapterInstance = createConnector(vm, fieldNameOrMethod, wireDef);
+                ArrayPush.call(connect, () => adapterInstance.connect());
+                ArrayPush.call(disconnect, () => adapterInstance.disconnect());
+            }
         }
     }
 }

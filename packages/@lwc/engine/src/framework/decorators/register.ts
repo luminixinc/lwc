@@ -11,7 +11,7 @@ import {
     defineProperty,
     getOwnPropertyDescriptor,
     isFunction,
-    ArrayPush,
+    create,
     toString,
     isFalse,
 } from '../../shared/language';
@@ -25,6 +25,8 @@ import {
     storeWiredFieldMeta,
     ConfigCallback,
 } from '../wiring';
+import { EmptyObject } from '../utils';
+import { createObservedFieldPropertyDescriptor } from '../observed-fields';
 
 // data produced by compiler
 type WireCompilerMeta = Record<string, WireCompilerDef>;
@@ -54,36 +56,48 @@ interface RegisterDecoratorMeta {
     readonly fields?: string[];
 }
 
-function validateObservedField(Ctor: ComponentConstructor, fieldName: string) {
+function validateObservedField(
+    Ctor: ComponentConstructor,
+    fieldName: string,
+    descriptor: PropertyDescriptor | undefined
+) {
     if (process.env.NODE_ENV !== 'production') {
-        const descriptor = getOwnPropertyDescriptor(Ctor.prototype, fieldName);
         if (!isUndefined(descriptor)) {
             assert.fail(`Compiler Error: Invalid field ${fieldName} declaration.`);
         }
     }
 }
 
-function validateFieldDecoratedWithTrack(Ctor: ComponentConstructor, fieldName: string) {
+function validateFieldDecoratedWithTrack(
+    Ctor: ComponentConstructor,
+    fieldName: string,
+    descriptor: PropertyDescriptor | undefined
+) {
     if (process.env.NODE_ENV !== 'production') {
-        const descriptor = getOwnPropertyDescriptor(Ctor.prototype, fieldName);
         if (!isUndefined(descriptor)) {
             assert.fail(`Compiler Error: Invalid @track ${fieldName} declaration.`);
         }
     }
 }
 
-function validateFieldDecoratedWithWire(Ctor: ComponentConstructor, fieldName: string) {
+function validateFieldDecoratedWithWire(
+    Ctor: ComponentConstructor,
+    fieldName: string,
+    descriptor: PropertyDescriptor | undefined
+) {
     if (process.env.NODE_ENV !== 'production') {
-        const descriptor = getOwnPropertyDescriptor(Ctor.prototype, fieldName);
         if (!isUndefined(descriptor)) {
             assert.fail(`Compiler Error: Invalid @wire(...) ${fieldName} field declaration.`);
         }
     }
 }
 
-function validateMethodDecoratedWithWire(Ctor: ComponentConstructor, methodName: string) {
+function validateMethodDecoratedWithWire(
+    Ctor: ComponentConstructor,
+    methodName: string,
+    descriptor: PropertyDescriptor | undefined
+) {
     if (process.env.NODE_ENV !== 'production') {
-        const descriptor = getOwnPropertyDescriptor(Ctor.prototype, methodName);
         if (
             isUndefined(descriptor) ||
             !isFunction(descriptor.value) ||
@@ -94,18 +108,24 @@ function validateMethodDecoratedWithWire(Ctor: ComponentConstructor, methodName:
     }
 }
 
-function validateFieldDecoratedWithApi(Ctor: ComponentConstructor, fieldName: string) {
+function validateFieldDecoratedWithApi(
+    Ctor: ComponentConstructor,
+    fieldName: string,
+    descriptor: PropertyDescriptor | undefined
+) {
     if (process.env.NODE_ENV !== 'production') {
-        const descriptor = getOwnPropertyDescriptor(Ctor.prototype, fieldName);
         if (!isUndefined(descriptor)) {
             assert.fail(`Compiler Error: Invalid @api ${fieldName} field declaration.`);
         }
     }
 }
 
-function validateAccessorDecoratedWithApi(Ctor: ComponentConstructor, fieldName: string) {
+function validateAccessorDecoratedWithApi(
+    Ctor: ComponentConstructor,
+    fieldName: string,
+    descriptor: PropertyDescriptor | undefined
+) {
     if (process.env.NODE_ENV !== 'production') {
-        const descriptor = getOwnPropertyDescriptor(Ctor.prototype, fieldName);
         if (isUndefined(descriptor)) {
             assert.fail(`Compiler Error: Invalid @api get ${fieldName} accessor declaration.`);
         } else if (isFunction(descriptor.set)) {
@@ -121,9 +141,12 @@ function validateAccessorDecoratedWithApi(Ctor: ComponentConstructor, fieldName:
     }
 }
 
-function validateMethodDecoratedWithApi(Ctor: ComponentConstructor, methodName: string) {
+function validateMethodDecoratedWithApi(
+    Ctor: ComponentConstructor,
+    methodName: string,
+    descriptor: PropertyDescriptor | undefined
+) {
     if (process.env.NODE_ENV !== 'production') {
-        const descriptor = getOwnPropertyDescriptor(Ctor.prototype, methodName);
         if (
             isUndefined(descriptor) ||
             !isFunction(descriptor.value) ||
@@ -144,86 +167,91 @@ export function registerDecorators(
 ): ComponentConstructor {
     const proto = Ctor.prototype;
     const { publicProps, publicMethods, wire, track, fields } = meta;
-    const apiMethods = [];
-    const apiFields = [];
-    const wiredMethods = [];
-    const wiredFields = [];
+    const apiMethods: PropertyDescriptorMap = create(null);
+    const apiFields: PropertyDescriptorMap = create(null);
+    const wiredMethods: PropertyDescriptorMap = create(null);
+    const wiredFields: PropertyDescriptorMap = create(null);
+    const observedFields: PropertyDescriptorMap = create(null);
+    let descriptor: PropertyDescriptor | undefined;
     if (!isUndefined(publicProps)) {
         for (const fieldName in publicProps) {
             const propConfig = publicProps[fieldName];
-            let descriptor: PropertyDescriptor | undefined;
+            descriptor = getOwnPropertyDescriptor(proto, fieldName);
             if (propConfig.config > 0) {
                 // accessor declaration
                 if (process.env.NODE_ENV !== 'production') {
-                    validateAccessorDecoratedWithApi(Ctor, fieldName);
+                    validateAccessorDecoratedWithApi(Ctor, fieldName, descriptor);
                 }
-                descriptor = getOwnPropertyDescriptor(proto, fieldName);
-                descriptor = createPublicAccessorDescriptor(
-                    fieldName,
-                    descriptor as PropertyDescriptor
-                );
+                if (isUndefined(descriptor)) {
+                    throw new Error();
+                }
+                descriptor = createPublicAccessorDescriptor(fieldName, descriptor);
             } else {
                 // field declaration
                 if (process.env.NODE_ENV !== 'production') {
-                    validateFieldDecoratedWithApi(Ctor, fieldName);
+                    validateFieldDecoratedWithApi(Ctor, fieldName, descriptor);
                 }
                 descriptor = createPublicPropertyDescriptor(fieldName);
             }
-            ArrayPush.call(apiFields, fieldName);
+            apiFields[fieldName] = descriptor;
             defineProperty(proto, fieldName, descriptor);
         }
     }
     if (!isUndefined(publicMethods)) {
         forEach.call(publicMethods, methodName => {
+            descriptor = getOwnPropertyDescriptor(proto, methodName);
             if (process.env.NODE_ENV !== 'production') {
-                validateMethodDecoratedWithApi(Ctor, methodName);
+                validateMethodDecoratedWithApi(Ctor, methodName, descriptor);
             }
-            ArrayPush.call(apiMethods, methodName);
+            if (isUndefined(descriptor)) {
+                throw new Error();
+            }
+            apiMethods[methodName] = descriptor;
         });
     }
     if (!isUndefined(wire)) {
         for (const fieldOrMethodName in wire) {
             const { adapter, method } = wire[fieldOrMethodName];
             const configCallback = wire[fieldOrMethodName].config;
+            descriptor = getOwnPropertyDescriptor(proto, fieldOrMethodName);
             if (method === 1) {
                 if (process.env.NODE_ENV !== 'production') {
-                    validateMethodDecoratedWithWire(Ctor, fieldOrMethodName);
+                    validateMethodDecoratedWithWire(Ctor, fieldOrMethodName, descriptor);
                 }
-                ArrayPush.call(wiredMethods, fieldOrMethodName);
-                storeWiredMethodMeta(
-                    Ctor,
-                    fieldOrMethodName,
-                    adapter,
-                    proto[fieldOrMethodName] as (data: any) => void,
-                    configCallback
-                );
+                if (isUndefined(descriptor)) {
+                    throw new Error();
+                }
+                wiredMethods[fieldOrMethodName] = descriptor;
+                storeWiredMethodMeta(descriptor, adapter, configCallback);
             } else {
                 if (process.env.NODE_ENV !== 'production') {
-                    validateFieldDecoratedWithWire(Ctor, fieldOrMethodName);
+                    validateFieldDecoratedWithWire(Ctor, fieldOrMethodName, descriptor);
                 }
-                storeWiredFieldMeta(Ctor, fieldOrMethodName, adapter, configCallback);
-                ArrayPush.call(wiredFields, fieldOrMethodName);
-                defineProperty(
-                    proto,
-                    fieldOrMethodName,
-                    internalWireFieldDecorator(fieldOrMethodName)
-                );
+                descriptor = internalWireFieldDecorator(fieldOrMethodName);
+                wiredFields[fieldOrMethodName] = descriptor;
+                storeWiredFieldMeta(descriptor, adapter, configCallback);
+                defineProperty(proto, fieldOrMethodName, descriptor);
             }
         }
     }
     if (!isUndefined(track)) {
         for (const fieldName in track) {
+            descriptor = getOwnPropertyDescriptor(proto, fieldName);
             if (process.env.NODE_ENV !== 'production') {
-                validateFieldDecoratedWithTrack(Ctor, fieldName);
+                validateFieldDecoratedWithTrack(Ctor, fieldName, descriptor);
             }
-            defineProperty(proto, fieldName, internalTrackDecorator(fieldName));
+            descriptor = internalTrackDecorator(fieldName);
+            defineProperty(proto, fieldName, descriptor);
         }
     }
     if (!isUndefined(fields)) {
         for (let i = 0, n = fields.length; i < n; i++) {
+            const fieldName = fields[i];
+            descriptor = getOwnPropertyDescriptor(proto, fieldName);
             if (process.env.NODE_ENV !== 'production') {
-                validateObservedField(Ctor, fields[i]);
+                validateObservedField(Ctor, fieldName, descriptor);
             }
+            observedFields[fieldName] = createObservedFieldPropertyDescriptor(fieldName);
         }
     }
     setDecoratorsMeta(Ctor, {
@@ -231,7 +259,7 @@ export function registerDecorators(
         apiFields,
         wiredMethods,
         wiredFields,
-        fields,
+        observedFields,
     });
     return Ctor;
 }
@@ -239,11 +267,11 @@ export function registerDecorators(
 const signedDecoratorToMetaMap: Map<ComponentConstructor, DecoratorMeta> = new Map();
 
 interface DecoratorMeta {
-    readonly apiMethods: string[];
-    readonly apiFields: string[];
-    readonly wiredMethods: string[];
-    readonly wiredFields: string[];
-    readonly fields?: string[];
+    readonly apiMethods: PropertyDescriptorMap;
+    readonly apiFields: PropertyDescriptorMap;
+    readonly wiredMethods: PropertyDescriptorMap;
+    readonly wiredFields: PropertyDescriptorMap;
+    readonly observedFields: PropertyDescriptorMap;
 }
 
 function setDecoratorsMeta(Ctor: ComponentConstructor, meta: DecoratorMeta) {
@@ -251,10 +279,11 @@ function setDecoratorsMeta(Ctor: ComponentConstructor, meta: DecoratorMeta) {
 }
 
 const defaultMeta: DecoratorMeta = {
-    apiMethods: [],
-    apiFields: [],
-    wiredMethods: [],
-    wiredFields: [],
+    apiMethods: EmptyObject,
+    apiFields: EmptyObject,
+    wiredMethods: EmptyObject,
+    wiredFields: EmptyObject,
+    observedFields: EmptyObject,
 };
 
 export function getDecoratorsMeta(Ctor: ComponentConstructor): DecoratorMeta {

@@ -17,18 +17,17 @@ import { ComponentInterface } from '../component';
  * LWC Components. This function can also be invoked directly
  * with any value to obtain the trackable version of the value.
  */
-// TODO: how to make track a decoratorFunction type as well?
-export default function track(target?: any): any {
+export default function track(target: any, propertyKey: string, descriptor: PropertyDescriptor);
+export default function track(target: any): any {
     if (arguments.length === 1) {
         return reactiveMembrane.getProxy(target);
     }
     if (process.env.NODE_ENV !== 'production') {
-        if (arguments.length !== 3) {
-            assert.fail(
-                `@track decorator can only be used with one argument to return a trackable object, or as a decorator function.`
-            );
-        }
+        assert.fail(
+            `@track decorator can only be used with one argument to return a trackable object, or as a decorator function.`
+        );
     }
+    throw new Error();
 }
 
 export function internalTrackDecorator(key: string): PropertyDescriptor {

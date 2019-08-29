@@ -15,7 +15,7 @@ import {
     ViewModelReflection,
 } from './utils';
 import { setHiddenField, getHiddenField, createFieldName } from '../shared/fields';
-import { getComponentDef, setElementProto } from './def';
+import { getComponentInternalDef, setElementProto } from './def';
 import { patchCustomElementWithRestrictions } from './restrictions';
 import { GlobalMeasurementPhase, startGlobalMeasure, endGlobalMeasure } from './performance-timing';
 import { appendChild, insertBefore, replaceChild, removeChild } from '../env/node';
@@ -108,7 +108,7 @@ export function createElement(sel: string, options: CreateElementOptions): HTMLE
         Ctor = resolveCircularModuleDependency(Ctor);
     }
 
-    const def = getComponentDef(Ctor);
+    const def = getComponentInternalDef(Ctor);
     setElementProto(element, def);
 
     if (process.env.NODE_ENV !== 'production') {

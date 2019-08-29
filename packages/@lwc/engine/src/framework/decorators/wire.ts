@@ -22,7 +22,7 @@ export default function wire(
     if (process.env.NODE_ENV !== 'production') {
         assert.fail('@wire(adapter, config?) may only be used as a decorator.');
     }
-    throw new TypeError();
+    throw new Error();
 }
 
 export function internalWireFieldDecorator(key: string): PropertyDescriptor {

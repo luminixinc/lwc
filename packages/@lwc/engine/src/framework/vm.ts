@@ -5,10 +5,9 @@
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/MIT
  */
 import assert from '../shared/assert';
-import { getComponentDef } from './def';
+import { getComponentInternalDef } from './def';
 import {
     createComponent,
-    linkComponent,
     renderComponent,
     ComponentConstructor,
     markComponentAsDirty,
@@ -26,6 +25,7 @@ import {
     StringToLowerCase,
     isFalse,
     isArray,
+    getOwnPropertyNames,
 } from '../shared/language';
 import { getHiddenField } from '../shared/fields';
 import {
@@ -56,7 +56,7 @@ import { parentElementGetter, parentNodeGetter } from '../env/node';
 import { updateDynamicChildren, updateStaticChildren } from '../3rdparty/snabbdom/snabbdom';
 import { hasDynamicChildren } from './hooks';
 import { ReactiveObserver } from '../libs/mutation-tracker';
-import { connectWireAdapters, disconnectWireAdapters } from './wiring';
+import { connectWireAdapters, disconnectWireAdapters, installWireAdapters } from './wiring';
 
 export interface SlotSet {
     [key: string]: VNodes;
@@ -213,7 +213,7 @@ export function createVM(elm: HTMLElement, Ctor: ComponentConstructor, options: 
             `VM creation requires a DOM element instead of ${elm}.`
         );
     }
-    const def = getComponentDef(Ctor);
+    const def = getComponentInternalDef(Ctor);
     const { isRoot, mode, owner } = options;
     idx += 1;
     const uninitializedVm: UninitializedVM = {
@@ -257,7 +257,10 @@ export function createVM(elm: HTMLElement, Ctor: ComponentConstructor, options: 
 
     // link component to the wire service
     const initializedVm = uninitializedVm as VM;
-    linkComponent(initializedVm);
+    // initializing the wire decorator per instance only when really needed
+    if (hasWireAdapters(initializedVm)) {
+        installWireAdapters(initializedVm);
+    }
 }
 
 function rehydrate(vm: VM) {
@@ -389,11 +392,7 @@ function runConnectedCallback(vm: VM) {
     if (connected) {
         invokeServiceHook(vm, connected);
     }
-    // TODO: eventually this should be done by node-reactions on the wire.ts directly
-    const {
-        def: { wire },
-    } = vm;
-    if (wire.length > 0) {
+    if (hasWireAdapters(vm)) {
         connectWireAdapters(vm);
     }
     const { connectedCallback } = vm.def;
@@ -408,6 +407,10 @@ function runConnectedCallback(vm: VM) {
             endMeasure('connectedCallback', vm);
         }
     }
+}
+
+function hasWireAdapters(vm: VM): boolean {
+    return getOwnPropertyNames(vm.def.wire).length > 0;
 }
 
 function runDisconnectedCallback(vm: VM) {
@@ -428,11 +431,7 @@ function runDisconnectedCallback(vm: VM) {
     if (disconnected) {
         invokeServiceHook(vm, disconnected);
     }
-    // TODO: eventually this should be done by node-reactions on the wire.ts directly
-    const {
-        def: { wire },
-    } = vm;
-    if (wire.length > 0) {
+    if (hasWireAdapters(vm)) {
         disconnectWireAdapters(vm);
     }
     const { disconnectedCallback } = vm.def;
