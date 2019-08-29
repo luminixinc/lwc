@@ -9,9 +9,21 @@ import { getComponentVM } from './vm';
 import assert from '../shared/assert';
 import { valueMutated, valueObserved } from '../libs/mutation-tracker';
 import { isRendering, vmBeingRendered } from './invoker';
-import { isFalse } from '../shared/language';
+import { isFalse, ArrayReduce } from '../shared/language';
 
-export function createObservedFieldPropertyDescriptor(key: string): PropertyDescriptor {
+export function createObservedFieldsDescriptorMap(fields: PropertyKey[]): PropertyDescriptorMap {
+    return ArrayReduce.call(
+        fields,
+        (acc: PropertyDescriptorMap, field) => {
+            acc[field] = createObservedFieldPropertyDescriptor(field);
+
+            return acc;
+        },
+        {}
+    ) as PropertyDescriptorMap;
+}
+
+function createObservedFieldPropertyDescriptor(key: string): PropertyDescriptor {
     return {
         get(this: ComponentInterface): any {
             const vm = getComponentVM(this);

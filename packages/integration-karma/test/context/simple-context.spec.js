@@ -1,6 +1,6 @@
-import { createElement, register } from 'lwc';
-import { registerWireService } from 'wire-service';
-registerWireService(register);
+import { createElement } from 'lwc';
+// import { registerWireService } from 'wire-service';
+// registerWireService(register);
 import { installCustomContext, setCustomContext } from 'x/simpleProvider';
 import Consumer from 'x/simpleConsumer';
 
