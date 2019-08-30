@@ -19,7 +19,6 @@ import { ComponentConstructor } from '../component';
 import { internalWireFieldDecorator } from './wire';
 import { internalTrackDecorator } from './track';
 import { createPublicPropertyDescriptor, createPublicAccessorDescriptor } from './api';
-import { createObservedFieldPropertyDescriptor } from '../observed-fields';
 import {
     WireAdapterConstructor,
     storeWiredMethodMeta,
@@ -45,7 +44,7 @@ interface PropCompilerDef {
 interface WireCompilerDef {
     method?: number;
     adapter: WireAdapterConstructor;
-    configCallback: ConfigCallback;
+    config: ConfigCallback;
 }
 interface RegisterDecoratorMeta {
     readonly publicMethods?: MethodCompilerMeta;
@@ -185,7 +184,7 @@ export function registerDecorators(
     if (!isUndefined(wire)) {
         for (const fieldOrMethodName in wire) {
             const { adapter, method } = wire[fieldOrMethodName];
-            const { configCallback } = wire[fieldOrMethodName];
+            const configCallback = wire[fieldOrMethodName].config;
             if (method === 1) {
                 if (process.env.NODE_ENV !== 'production') {
                     validateMethodDecoratedWithWire(Ctor, fieldOrMethodName);
@@ -221,11 +220,10 @@ export function registerDecorators(
         }
     }
     if (!isUndefined(fields)) {
-        for (const fieldName in fields) {
+        for (let i = 0, n = fields.length; i < n; i++) {
             if (process.env.NODE_ENV !== 'production') {
-                validateObservedField(Ctor, fieldName);
+                validateObservedField(Ctor, fields[i]);
             }
-            defineProperty(proto, fieldName, createObservedFieldPropertyDescriptor(fieldName));
         }
     }
     setDecoratorsMeta(Ctor, {
@@ -233,6 +231,7 @@ export function registerDecorators(
         apiFields,
         wiredMethods,
         wiredFields,
+        fields,
     });
     return Ctor;
 }
@@ -244,6 +243,7 @@ interface DecoratorMeta {
     readonly apiFields: string[];
     readonly wiredMethods: string[];
     readonly wiredFields: string[];
+    readonly fields?: string[];
 }
 
 function setDecoratorsMeta(Ctor: ComponentConstructor, meta: DecoratorMeta) {

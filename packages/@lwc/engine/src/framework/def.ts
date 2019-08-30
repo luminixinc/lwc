@@ -23,7 +23,9 @@ import {
     isUndefined,
     isFunction,
     ArrayConcat,
+    defineProperties,
 } from '../shared/language';
+import { createObservedFieldsDescriptorMap } from './observed-fields';
 import { getInternalField } from '../shared/fields';
 import {
     resolveCircularModuleDependency,
@@ -99,7 +101,7 @@ function createComponentDef(
     const { name } = meta;
     let { template } = meta;
     const decoratorsMeta = getDecoratorsMeta(Ctor);
-    const { apiFields, apiMethods, wiredFields, wiredMethods } = decoratorsMeta;
+    const { apiFields, apiMethods, wiredFields, wiredMethods, fields } = decoratorsMeta;
     const proto = Ctor.prototype;
 
     let {
@@ -124,6 +126,10 @@ function createComponentDef(
     errorCallback = errorCallback || superDef.errorCallback;
     render = render || superDef.render;
     template = template || superDef.template;
+
+    if (!isUndefined(fields)) {
+        defineProperties(proto, createObservedFieldsDescriptorMap(fields));
+    }
 
     const def: ComponentDef = {
         ctor: Ctor,
