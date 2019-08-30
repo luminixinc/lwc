@@ -8,13 +8,13 @@
  */
 
 // Per Context Component Instance, track the current context data
-import { register, ValueChangedEvent, LinkContextEvent } from 'wire-service';
+import { WireAdapter, ValueChangedEvent, LinkContextEvent } from 'wire-service';
 
 const { addEventListener } = Document.prototype;
 
 const ContextValueMap = new WeakMap();
 const UniqueEventName = `simple_context_event_${guid()}`;
-const Provider = Symbol('SimpleContextProvider');
+// const Provider = Symbol('SimpleContextProvider');
 
 function guid() {
     return Math.floor((1 + Math.random()) * 0x10000)
@@ -37,7 +37,8 @@ function createContextPayload(value) {
     return value;
 }
 
-register(Provider, eventTarget => {
+// register(Provider, eventTarget => {
+const adapterEventTargetCallback = eventTarget => {
     let unsubscribeCallback;
 
     function callback(value, unsubscribe) {
@@ -62,7 +63,14 @@ register(Provider, eventTarget => {
             unsubscribeCallback = undefined; // resetting it to support reinsertion
         }
     });
-});
+};
+
+const Provider = class extends WireAdapter {
+    constructor(dataCallback) {
+        super(dataCallback);
+        adapterEventTargetCallback(this.eventTarget);
+    }
+};
 
 function getContextData(eventTarget) {
     let contextData = ContextValueMap.get(eventTarget);
