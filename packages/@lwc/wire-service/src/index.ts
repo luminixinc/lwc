@@ -13,8 +13,8 @@ export function register(
     adapterId: any,
     adapterEventTargetCallback: (eventTarget: WireEventTarget) => void
 ) {
-    if (!adapterId) {
-        new TypeError('adapter id must be truthy');
+    if (adapterId == null || !(adapterId instanceof Object)) {
+        new TypeError('adapter id must be an object or a function');
     }
     if (typeof adapterEventTargetCallback !== 'function') {
         new TypeError('adapter factory must be a callable');
