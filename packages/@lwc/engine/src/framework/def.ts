@@ -26,7 +26,6 @@ import {
     defineProperties,
 } from '../shared/language';
 import { createObservedFieldsDescriptorMap } from './observed-fields';
-import { getInternalField } from '../shared/fields';
 import {
     resolveCircularModuleDependency,
     isCircularModuleDependency,
@@ -228,7 +227,7 @@ export function getComponentDef(Ctor: any, subclassComponentName?: string): Comp
 export function getComponentConstructor(elm: HTMLElement): ComponentConstructor | null {
     let ctor: ComponentConstructor | null = null;
     if (elm instanceof HTMLElement) {
-        const vm = getInternalField(elm, ViewModelReflection);
+        const vm = getHiddenField(elm, ViewModelReflection);
         if (!isUndefined(vm)) {
             ctor = vm.def.ctor;
         }
@@ -251,6 +250,7 @@ import {
 } from './base-bridge-element';
 import { getDecoratorsMeta } from './decorators/register';
 import { defaultEmptyTemplate } from './secure-template';
+import { getHiddenField } from '../shared/fields';
 
 const lightingElementDef: ComponentDef = {
     ctor: BaseLightningElement,
