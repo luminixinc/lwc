@@ -126,7 +126,7 @@ export const ATTRS_PROPS_TRANFORMS: { [name: string]: string } = {
     ...AriaAttrNameToPropNameMap,
 };
 
-export const DISALLOWED_HTML_TAGS = new Set(['base', 'link', 'meta', 'script', 'title']);
+export const DISALLOWED_HTML_TAGS = new Set(['base', 'meta', 'script', 'title']);
 
 export const HTML_ATTRIBUTES_REVERSE_LOOKUP: {
     [attr: string]: string[];
