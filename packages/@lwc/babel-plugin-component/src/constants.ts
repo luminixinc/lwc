@@ -53,6 +53,8 @@ const REGISTER_DECORATORS_ID = 'registerDecorators';
 const TEMPLATE_KEY = 'tmpl';
 const COMPONENT_NAME_KEY = 'sel';
 const API_VERSION_KEY = 'apiVersion';
+const SALESFORCE_SCHEMA_PREFIX = '@salesforce/schema/';
+const SALESFORCE_APEX = '@salesforce/apex';
 
 export {
     AMBIGUOUS_PROP_SET,
@@ -66,4 +68,6 @@ export {
     TEMPLATE_KEY,
     COMPONENT_NAME_KEY,
     API_VERSION_KEY,
+    SALESFORCE_SCHEMA_PREFIX,
+    SALESFORCE_APEX,
 };
