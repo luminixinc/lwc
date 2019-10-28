@@ -4,7 +4,12 @@
  * SPDX-License-Identifier: MIT
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/MIT
  */
-const { LWC_PACKAGE_ALIAS, LWC_PACKAGE_EXPORTS } = require('./constants');
+const {
+    LWC_PACKAGE_ALIAS,
+    LWC_PACKAGE_EXPORTS,
+    SALESFORCE_SCHEMA_PREFIX,
+    SALESFORCE_APEX,
+} = require('./constants');
 const { LWCClassErrors, generateErrorMessage } = require('@lwc/errors');
 const lineColumn = require('line-column');
 
@@ -80,6 +85,40 @@ function getEngineImportSpecifiers(path) {
         }, []);
 }
 
+function getSalesforceSchemaImports(path) {
+    const programPath = path.isProgram() ? path : path.findParent(node => node.isProgram());
+
+    const imports = programPath.get('body').filter(p => {
+        return (
+            p.isImportDeclaration() &&
+            p.node.type === 'ImportDeclaration' &&
+            typeof p.node.source === 'object' &&
+            p.node.source.type === 'StringLiteral' &&
+            p.node.source.value.startsWith(SALESFORCE_SCHEMA_PREFIX) &&
+            p.node.specifiers.length > 0 &&
+            p.node.specifiers[0].type === 'ImportDefaultSpecifier'
+        );
+    });
+
+    return imports;
+}
+
+function getSalesforceApexImports(path) {
+    const programPath = path.isProgram() ? path : path.findParent(node => node.isProgram());
+
+    const imports = programPath.get('body').filter(p => {
+        return (
+            p.isImportDeclaration() &&
+            p.node.type === 'ImportDeclaration' &&
+            typeof p.node.source === 'object' &&
+            p.node.source.type === 'StringLiteral' &&
+            p.node.source.value.startsWith(SALESFORCE_APEX)
+        );
+    });
+
+    return imports;
+}
+
 function normalizeFilename(source) {
     return (
         (source.hub && source.hub.file && source.hub.file.opts && source.hub.file.opts.filename) ||
@@ -137,5 +176,7 @@ module.exports = {
     isSetterClassMethod,
     staticClassProperty,
     getEngineImportSpecifiers,
+    getSalesforceSchemaImports,
+    getSalesforceApexImports,
     generateError,
 };

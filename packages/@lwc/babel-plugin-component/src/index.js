@@ -5,6 +5,7 @@
  * For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/MIT
  */
 const component = require('./component');
+const pulsar_rewrites = require('./pulsar_rewrites'); // TODO : can we make this an optional config blob that gets passed in?
 const { decorators } = require('./decorators');
 const { exit } = require('./program');
 const dynamicImports = require('./dynamic-imports');
@@ -22,6 +23,12 @@ module.exports = function LwcClassTransform(api) {
             parserOpts.plugins.push('classProperties');
             parserOpts.plugins.push('dynamicImport');
         },
-        visitor: mergeVisitors([decorators(api), component(api), dynamicImports(api), exit(api)]),
+        visitor: mergeVisitors([
+            pulsar_rewrites(api),
+            decorators(api),
+            component(api),
+            dynamicImports(api),
+            exit(api),
+        ]),
     };
 };

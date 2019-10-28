@@ -69,6 +69,9 @@ const DECORATOR_TYPES = {
     METHOD: 'method',
 };
 
+const SALESFORCE_SCHEMA_PREFIX = '@salesforce/schema/';
+const SALESFORCE_APEX = '@salesforce/apex';
+
 module.exports = {
     AMBIGUOUS_PROP_SET,
     DISALLOWED_PROP_SET,
@@ -78,4 +81,6 @@ module.exports = {
     LWC_API_WHITELIST,
     LWC_COMPONENT_PROPERTIES,
     DECORATOR_TYPES,
+    SALESFORCE_SCHEMA_PREFIX,
+    SALESFORCE_APEX,
 };

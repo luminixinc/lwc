@@ -34,6 +34,9 @@ export default function scriptTransform(
         throw normalizeToCompilerError(TransformerErrors.JS_TRANSFORMER_ERROR, e, { filename });
     }
 
+    // LUMINIX: for debugging ...
+    console.log('\nCODE:\n', result.code);
+
     return {
         code: result.code,
         map: result.map,
