@@ -82,12 +82,21 @@ function resolveModuleFromDir(
     // A module dir record can only resolve module specifier with the following form "[ns]/[name]".
     // We can early exit if the required specifier doesn't match.
     const parts = specifier.split('/');
+
+    /* LUMINIX BUILD: NOPE, can't do this, otherwise we cannot resolve: import Id from '@salesforce/user/Id'
     if (parts.length !== 2) {
         return;
     }
+    */
 
+    /* LUMINIX BUILD:
     const [ns, name] = parts;
     const moduleDir = path.join(absModuleDir, ns, name);
+    */
+    const [, name] = parts;
+    const moduleDir = path.join(absModuleDir, specifier);
+
+    console.log(`RESOLVE MODULE: ${specifier} --> ${moduleDir}`);
 
     // Exit if the expected module directory doesn't exists.
     if (!fs.existsSync(moduleDir)) {
@@ -151,6 +160,7 @@ function resolveModuleFromNpm(
             );
 
             if (registryEntry) {
+                console.log("\n REGISTRY ENTRY: \n", registryEntry);
                 if (aliasedSpecifier) {
                     registryEntry.specifier = specifier;
                     registryEntry.type = RegistryType.alias;

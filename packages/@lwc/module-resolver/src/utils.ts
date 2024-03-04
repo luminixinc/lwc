@@ -46,6 +46,7 @@ export function getModuleEntry(
     opts: InnerResolverOptions
 ): string {
     const entryJS = getEntry(moduleDir, moduleName, 'js');
+    const indexJS = getEntry(moduleDir, 'index', 'js'); // LUMINIX TODO FIXME: our pulsarlwc_module compiles things to index.js ... is this no longer a good thing?
     const entryTS = getEntry(moduleDir, moduleName, 'ts');
     const entryHTML = getEntry(moduleDir, moduleName, 'html');
     const entryCSS = getEntry(moduleDir, moduleName, 'css');
@@ -53,6 +54,8 @@ export function getModuleEntry(
     // Order is important
     if (fs.existsSync(entryJS)) {
         return entryJS;
+    } else if (fs.existsSync(indexJS)) {
+        return indexJS;
     } else if (fs.existsSync(entryTS)) {
         return entryTS;
     } else if (fs.existsSync(entryHTML)) {
