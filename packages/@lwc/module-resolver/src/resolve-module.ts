@@ -57,6 +57,8 @@ function resolveModuleFromAlias(
             { scope: opts.rootDir }
         );
     }
+    
+    console.log(`RESOLVED MODULE (alias): ${specifier} --> ${entry}`); // LUMINIX: for debugging ...
 
     return createRegistryEntry(entry, specifier, RegistryType.alias, opts);
 }
@@ -93,6 +95,8 @@ function resolveModuleFromDir(
     if (!fs.existsSync(moduleDir)) {
         return;
     }
+
+    console.log(`RESOLVED MODULE (dir): ${specifier} --> ${moduleDir}`); // LUMINIX: for debugging ...
 
     const entry = getModuleEntry(moduleDir, name, opts);
     return createRegistryEntry(entry, specifier, RegistryType.dir, opts);
@@ -151,6 +155,7 @@ function resolveModuleFromNpm(
             );
 
             if (registryEntry) {
+                console.log(`RESOLVED MODULE (npm): ${specifier} --> ${registryEntry.entry}`); // LUMINIX: for debugging ...
                 if (aliasedSpecifier) {
                     registryEntry.specifier = specifier;
                     registryEntry.type = RegistryType.alias;

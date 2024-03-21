@@ -46,15 +46,22 @@ export function getModuleEntry(
     opts: InnerResolverOptions
 ): string {
     const entryJS = getEntry(moduleDir, moduleName, 'js');
+    const indexJS = getEntry(moduleDir, 'index', 'js');
     const entryTS = getEntry(moduleDir, moduleName, 'ts');
+    const indexTS = getEntry(moduleDir, 'index', 'ts');
     const entryHTML = getEntry(moduleDir, moduleName, 'html');
     const entryCSS = getEntry(moduleDir, moduleName, 'css');
 
     // Order is important
     if (fs.existsSync(entryJS)) {
         return entryJS;
+    } else if (fs.existsSync(indexJS)) {
+        // LUMINIX NOTE: @pulsarlwc/foo sometimes is provided as index.js rather than foo.js
+        return indexJS;
     } else if (fs.existsSync(entryTS)) {
         return entryTS;
+    } else if (fs.existsSync(indexTS)) {
+        return indexTS;
     } else if (fs.existsSync(entryHTML)) {
         return entryHTML;
     } else if (fs.existsSync(entryCSS)) {
