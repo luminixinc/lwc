@@ -99,6 +99,9 @@ export default function scriptTransform(
         throw normalizeToCompilerError(transformerError, e, { filename });
     }
 
+    // LUMINIX: for debugging ...
+    //console.log('\nCODE:\n', result.code);
+
     return {
         code: result.code!,
         map: result.map,

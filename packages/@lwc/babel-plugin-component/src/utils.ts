@@ -8,7 +8,7 @@ import lineColumn from 'line-column';
 import { types } from '@babel/core';
 import { NodePath } from '@babel/traverse';
 import { CompilerMetrics, generateErrorMessage } from '@lwc/errors';
-import { LWC_PACKAGE_ALIAS } from './constants';
+import { LWC_PACKAGE_ALIAS, SALESFORCE_SCHEMA_PREFIX, SALESFORCE_APEX, SALESFORCE_USER } from './constants';
 import { DecoratorErrorOptions, ImportSpecifier } from './decorators/types';
 import { LwcBabelPluginPass } from './types';
 
@@ -74,6 +74,56 @@ function getEngineImportSpecifiers(path: NodePath): ImportSpecifier[] {
     );
 }
 
+function getSalesforceSchemaImports(path: NodePath): NodePath<types.ImportDeclaration>[] {
+    const programPath = path.isProgram() ? path : path.findParent(node => node.isProgram()) as NodePath<types.Program>;
+
+    const imports = programPath.get('body').filter(p => {
+        return (
+            p.isImportDeclaration() &&
+            p.node.type === 'ImportDeclaration' &&
+            typeof p.node.source === 'object' &&
+            p.node.source.type === 'StringLiteral' &&
+            p.node.source.value.startsWith(SALESFORCE_SCHEMA_PREFIX) &&
+            p.node.specifiers.length > 0 &&
+            p.node.specifiers[0].type === 'ImportDefaultSpecifier'
+        );
+    });
+
+    return imports as NodePath<types.ImportDeclaration>[];
+}
+
+function getSalesforceApexImports(path: NodePath): NodePath<types.ImportDeclaration>[] {
+    const programPath = path.isProgram() ? path : path.findParent(node => node.isProgram()) as NodePath<types.Program>;
+
+    const imports = programPath.get('body').filter(p => {
+        return (
+            p.isImportDeclaration() &&
+            p.node.type === 'ImportDeclaration' &&
+            typeof p.node.source === 'object' &&
+            p.node.source.type === 'StringLiteral' &&
+            p.node.source.value.startsWith(SALESFORCE_APEX)
+        );
+    });
+
+    return imports as NodePath<types.ImportDeclaration>[];
+}
+
+function getSalesforceUserImports(path: NodePath): NodePath<types.ImportDeclaration>[] {
+    const programPath = path.isProgram() ? path : path.findParent(node => node.isProgram()) as NodePath<types.Program>;
+
+    const imports = programPath.get('body').filter(p => {
+        return (
+            p.isImportDeclaration() &&
+            p.node.type === 'ImportDeclaration' &&
+            typeof p.node.source === 'object' &&
+            p.node.source.type === 'StringLiteral' &&
+            p.node.source.value.startsWith(SALESFORCE_USER)
+        );
+    });
+
+    return imports as NodePath<types.ImportDeclaration>[];
+}
+
 function normalizeLocation(source: NodePath<types.Node>) {
     const location = (source.node && (source.node.loc || (source.node as any)._loc)) || null;
     if (!location) {
@@ -123,4 +173,7 @@ export {
     generateError,
     getEngineImportSpecifiers,
     incrementMetricCounter,
+    getSalesforceSchemaImports,
+    getSalesforceApexImports,
+    getSalesforceUserImports,
 };
